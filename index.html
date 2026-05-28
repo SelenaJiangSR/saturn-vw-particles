@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ VW × SATURN · Gesture Studio</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:-apple-system,'Helvetica Neue',sans-serif; color:#d4af37; user-select:none; }
+
+#canvas { position:fixed; inset:0; cursor:grab; }
+#canvas:active { cursor:grabbing; }
+
+/* ─── LOADING ─── */
+#loading {
+  position:fixed; inset:0; background:#000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:300; transition:opacity 0.8s;
+}
+.lorb {
+  font-size:56px; margin-bottom:16px;
+  filter:drop-shadow(0 0 20px rgba(212,175,55,0.85));
+  animation:spin 3s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.ltxt  { font-size:12px; letter-spacing:0.35em; color:rgba(212,175,55,0.5); margin-bottom:10px; }
+.lstep { font-size:10px; letter-spacing:0.2em; color:rgba(212,175,55,0.32); height:16px; transition:0.3s; }
+.lprog {
+  width:180px; height:2px; background:rgba(212,175,55,0.12);
+  border-radius:2px; overflow:hidden; margin-top:14px;
+}
+.lprog-fill {
+  height:100%; background:linear-gradient(90deg,#6b0099,#d4af37);
+  border-radius:2px; width:0%; transition:width 0.5s;
+}
+
+/* ─── LEFT PANEL ─── */
+#panel {
+  position:fixed; top:50%; left:18px; transform:translateY(-50%);
+  width:216px;
+  background:rgba(0,0,0,0.84);
+  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+  border:1px solid rgba(212,175,55,0.25); border-radius:18px;
+  padding:20px 15px; z-index:50;
+}
+.brand { text-align:center; margin-bottom:14px; }
+.brand-orb  { font-size:28px; line-height:1; filter:drop-shadow(0 0 12px rgba(212,175,55,0.75)); margin-bottom:5px; }
+.brand-name { font-size:9px; letter-spacing:0.28em; color:rgba(212,175,55,0.55); }
+.brand-sub  { font-size:7px; letter-spacing:0.16em; color:rgba(212,175,55,0.28); margin-top:2px; }
+
+.rule { width:100%; height:1px; background:rgba(212,175,55,0.1); margin:12px 0; }
+.sec  { font-size:8px; letter-spacing:0.24em; color:rgba(212,175,55,0.38); margin-bottom:9px; }
+
+/* Gesture cards */
+.gest-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.gc {
+  border:1px solid rgba(212,175,55,0.12); border-radius:8px;
+  padding:7px 5px; text-align:center;
+  background:rgba(255,255,255,0.025); transition:border-color 0.25s,background 0.25s;
+}
+.gc.lit { border-color:rgba(212,175,55,0.65); background:rgba(212,175,55,0.08); }
+.gc .gi { font-size:16px; display:block; margin-bottom:2px; line-height:1; }
+.gc .gl { font-size:8.5px; color:rgba(212,175,55,0.48); letter-spacing:0.04em; }
+.gc .gd { font-size:7.5px; color:rgba(255,255,255,0.28); margin-top:1px; }
+
+/* Hue slider */
+#hue-sl {
+  width:100%; -webkit-appearance:none; appearance:none;
+  height:10px; border-radius:5px; outline:none; cursor:pointer;
+  background:linear-gradient(to right,hsl(0,80%,55%),hsl(45,80%,55%),hsl(90,80%,55%),
+    hsl(150,80%,55%),hsl(210,80%,55%),hsl(270,80%,55%),hsl(330,80%,55%),hsl(360,80%,55%));
+}
+#hue-sl::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:#fff; border:2px solid rgba(0,0,0,0.3); cursor:pointer;
+}
+
+.row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.rl  { font-size:9px; color:rgba(212,175,55,0.38); min-width:40px; }
+.rv  { font-size:9px; color:rgba(212,175,55,0.72); min-width:30px; text-align:right; }
+input[type=range].mini {
+  flex:1; -webkit-appearance:none; appearance:none;
+  height:3px; border-radius:2px; background:rgba(212,175,55,0.2); outline:none; cursor:pointer;
+}
+input[type=range].mini::-webkit-slider-thumb {
+  -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+  background:#d4af37; cursor:pointer;
+}
+.ctog {
+  width:100%; padding:7px; border-radius:8px;
+  border:1px solid rgba(212,175,55,0.18); background:transparent;
+  color:rgba(212,175,55,0.5); font-size:10px; letter-spacing:0.1em; cursor:pointer; text-align:center; transition:0.18s;
+}
+.ctog:hover { border-color:rgba(212,175,55,0.45); color:rgba(212,175,55,0.85); }
+
+/* ─── TOP BAR ─── */
+#gbar {
+  position:fixed; top:18px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.8); backdrop-filter:blur(14px);
+  border:1px solid rgba(212,175,55,0.2); border-radius:28px;
+  padding:8px 22px; display:flex; align-items:center; gap:10px;
+  z-index:50; white-space:nowrap;
+}
+.gdot { width:7px; height:7px; border-radius:50%; background:#d4af37; box-shadow:0 0 7px #d4af37; animation:blink 1.6s ease-in-out infinite; flex-shrink:0; }
+@keyframes blink { 0%,100%{opacity:1} 55%{opacity:0.2} }
+#g-icon { font-size:20px; }
+#g-name { font-size:12px; color:#d4af37; letter-spacing:0.08em; font-weight:500; }
+#g-desc { font-size:10px; color:rgba(212,175,55,0.5); letter-spacing:0.05em; }
+
+/* ─── EFFECT LABEL ─── */
+#effect-label {
+  position:fixed; bottom:58px; left:50%; transform:translateX(-50%);
+  font-size:13px; letter-spacing:0.35em; color:rgba(212,175,55,0.6);
+  pointer-events:none; z-index:50; opacity:0; transition:opacity 0.4s; white-space:nowrap;
+}
+
+/* ─── SCALE BAR ─── */
+#scalebar { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); width:180px; text-align:center; z-index:50; pointer-events:none; }
+.strack { width:100%; height:2px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.sfill  { height:100%; background:linear-gradient(90deg,#6b0099,#d4af37); border-radius:2px; transition:width 0.1s; }
+.slabel { font-size:7.5px; color:rgba(212,175,55,0.28); letter-spacing:0.24em; margin-top:4px; }
+
+/* ─── CAMERA ─── */
+#camwrap {
+  position:fixed; bottom:20px; right:18px; width:130px;
+  border-radius:10px; overflow:hidden;
+  border:1px solid rgba(212,175,55,0.2); background:#000; z-index:50;
+}
+#camwrap video { width:100%; display:block; transform:scaleX(-1); opacity:0.6; }
+.camlabel { font-size:8px; color:rgba(212,175,55,0.34); letter-spacing:0.18em; text-align:center; padding:3px 0; }
+
+/* ─── FULLSCREEN ─── */
+#fsbtn {
+  position:fixed; top:18px; right:18px; width:36px; height:36px;
+  background:rgba(0,0,0,0.8); backdrop-filter:blur(14px);
+  border:1px solid rgba(212,175,55,0.2); border-radius:9px;
+  color:rgba(212,175,55,0.6); font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:0.18s; z-index:50;
+}
+#fsbtn:hover { border-color:#d4af37; color:#d4af37; }
+
+/* Cam status pill */
+#cam-status {
+  font-size:8px; color:rgba(212,175,55,0.4); letter-spacing:0.14em;
+  text-align:center; padding:3px 0 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="lorb">⊕</div>
+  <div class="ltxt">VW PARTICLE STUDIO</div>
+  <div class="lstep" id="lstep">Starting…</div>
+  <div class="lprog"><div class="lprog-fill" id="lprog-fill"></div></div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<!-- Top gesture bar -->
+<div id="gbar">
+  <div class="gdot"></div>
+  <span id="g-icon">·</span>
+  <span id="g-name">—</span>
+  <span id="g-desc">Camera loading…</span>
+</div>
+
+<!-- Left panel -->
+<div id="panel">
+  <div class="brand">
+    <div class="brand-orb">⊕</div>
+    <div class="brand-name">VIVIENNE WESTWOOD</div>
+    <div class="brand-sub">Saturn Orb · Gesture Studio</div>
+  </div>
+
+  <div class="rule"></div>
+  <div class="sec">GESTURE GUIDE</div>
+  <div class="gest-grid">
+    <div class="gc" id="gc-fist"><span class="gi">✊</span><span class="gl">Collapse</span><span class="gd">Implosion</span></div>
+    <div class="gc" id="gc-open"><span class="gi">✋</span><span class="gl">Explode</span><span class="gd">Expand</span></div>
+    <div class="gc" id="gc-point"><span class="gi">☝️</span><span class="gl">Steer</span><span class="gd">Spin control</span></div>
+    <div class="gc" id="gc-peace"><span class="gi">✌️</span><span class="gl">Vortex</span><span class="gd">Swirl spin</span></div>
+    <div class="gc" id="gc-three"><span class="gi">🤟</span><span class="gl">Wave</span><span class="gd">Ripple field</span></div>
+    <div class="gc" id="gc-thumb"><span class="gi">👍</span><span class="gl">Pulse</span><span class="gd">Heartbeat</span></div>
+  </div>
+
+  <div class="rule"></div>
+  <div class="sec">COLOUR HUE</div>
+  <input type="range" id="hue-sl" min="0" max="360" value="45">
+
+  <div class="rule"></div>
+  <div class="sec">PARAMETERS</div>
+  <div class="row"><span class="rl">Size</span><input type="range" class="mini" id="sz-sl" min="1" max="14" step="0.5" value="5"><span class="rv" id="sz-v">5</span></div>
+  <div class="row"><span class="rl">Speed</span><input type="range" class="mini" id="spd-sl" min="1" max="10" value="5"><span class="rv" id="spd-v">5</span></div>
+  <div class="row"><span class="rl">Count</span><input type="range" class="mini" id="cnt-sl" min="8000" max="60000" step="4000" value="32000"><span class="rv" id="cnt-v">32k</span></div>
+
+  <div class="rule"></div>
+  <button class="ctog" id="cam-tog">📷 Camera Preview</button>
+  <div id="cam-status">Initialising gesture camera…</div>
+</div>
+
+<button id="fsbtn" title="Fullscreen">⛶</button>
+
+<div id="camwrap">
+  <video id="video" playsinline autoplay muted></video>
+  <div class="camlabel">GESTURE CAM</div>
+</div>
+
+<div id="effect-label"></div>
+<div id="scalebar"><div class="strack"><div class="sfill" id="sfill" style="width:44%"></div></div><div class="slabel">SCALE</div></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+//  ASYNC SCRIPT LOADER  — loads scripts one at a time,
+//  tries primary CDN then fallback if it takes too long.
+// ═══════════════════════════════════════════════════════
+function loadScript(primary, fallback, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    let done = false;
+
+    function tryLoad(src, isFallback) {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => { if (!done) { done = true; resolve(); } };
+      s.onerror = () => {
+        if (!done && !isFallback && fallback) {
+          tryLoad(fallback, true);
+        } else if (!done) {
+          done = true; reject(new Error('Failed: ' + src));
+        }
+      };
+      document.head.appendChild(s);
+    }
+
+    tryLoad(primary, false);
+
+    // Timeout → switch to fallback
+    if (fallback) {
+      setTimeout(() => {
+        if (!done) tryLoad(fallback, true);
+      }, timeoutMs);
+    }
+  });
+}
+
+// ─── Loading progress UI ───
+const lstep = document.getElementById('lstep');
+const lprog = document.getElementById('lprog-fill');
+function setStep(msg, pct) {
+  lstep.textContent = msg;
+  lprog.style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN INIT  — sequential but non-blocking
+// ═══════════════════════════════════════════════════════
+async function main() {
+  // 1. Load Three.js  (try cdnjs, fallback to unpkg)
+  setStep('Loading 3D engine…', 15);
+  await loadScript(
+    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+    'https://unpkg.com/three@0.128.0/build/three.min.js',
+    6000
+  );
+
+  // 2. Init renderer + build Saturn immediately
+  setStep('Building Saturn…', 55);
+  initThree();
+  build();
+  startRenderLoop();
+
+  // 3. Hide loading — user sees particles now
+  setStep('Ready!', 100);
+  await new Promise(r => setTimeout(r, 250));
+  const lov = document.getElementById('loading');
+  lov.style.opacity = '0';
+  setTimeout(() => lov.remove(), 900);
+
+  // 4. Load MediaPipe in background (non-blocking for UX)
+  initUI();
+  loadGestureCamera();    // fire-and-forget
+}
+
+main().catch(err => {
+  document.getElementById('lstep').textContent = 'Error: ' + err.message;
+  document.getElementById('lstep').style.color = '#ff6666';
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  THREE.JS  —  defined after THREE is loaded
+// ═══════════════════════════════════════════════════════
+let renderer, scene, cam3, group, geo, mat, pts, origPos;
+let baseHue = 45;
+const _col  = { r:0, g:0, b:0 };   // scratch object (avoid new THREE.Color every call)
+
+function makeSprite() {
+  const sz = 64, c = document.createElement('canvas');
+  c.width = c.height = sz;
+  const g2 = c.getContext('2d');
+  const gr = g2.createRadialGradient(sz/2,sz/2,0, sz/2,sz/2,sz/2);
+  gr.addColorStop(0,    'rgba(255,255,255,1)');
+  gr.addColorStop(0.28, 'rgba(255,255,255,0.95)');
+  gr.addColorStop(0.60, 'rgba(255,255,255,0.45)');
+  gr.addColorStop(1,    'rgba(255,255,255,0)');
+  g2.fillStyle = gr; g2.fillRect(0,0,sz,sz);
+  return new THREE.CanvasTexture(c);
+}
+
+let sprite;
+
+function initThree() {
+  const canvas3d = document.getElementById('canvas');
+  renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x000000, 1);
+
+  scene = new THREE.Scene();
+  cam3  = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.01, 1000);
+  cam3.position.z = 5.5;
+
+  sprite = makeSprite();
+  group  = new THREE.Group();
+  scene.add(group);
+
+  window.addEventListener('resize', () => {
+    cam3.aspect = innerWidth / innerHeight;
+    cam3.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+}
+
+// ─── Colour helper (uses THREE.Color.setHSL) ───
+function writeCol(buf, i3, h, s, l, dh=22, dl=12) {
+  const tmp = new THREE.Color();
+  const hv = (((h + (Math.random()-.5)*dh) % 360)+360) % 360;
+  const sv = Math.max(0.1, Math.min(1,   s + (Math.random()-.5)*0.12));
+  const lv = Math.max(0.35, Math.min(0.92, l + (Math.random()-.5)*dl/100));
+  tmp.setHSL(hv/360, sv, lv);
+  buf[i3]=tmp.r; buf[i3+1]=tmp.g; buf[i3+2]=tmp.b;
+}
+
+// ─── Saturn: planet + tilted rings + VW crown ───
+function genSaturn(N) {
+  const pos = new Float32Array(N*3), col = new Float32Array(N*3);
+  const pN  = Math.floor(N*0.34), rN = Math.floor(N*0.50);
+  let i = 0;
+
+  // Planet sphere
+  for (; i < pN; i++) {
+    const th = Math.acos(2*Math.random()-1), ph = Math.PI*2*Math.random();
+    const r  = 1.0 + (Math.random()-.5)*0.03;
+    pos[i*3]  = r*Math.sin(th)*Math.cos(ph);
+    pos[i*3+1]= r*Math.cos(th);
+    pos[i*3+2]= r*Math.sin(th)*Math.sin(ph);
+    writeCol(col,i*3, baseHue,0.55,0.70, 20,13);
+  }
+
+  // Rings (XZ plane, tilted 65° around X toward camera)
+  const ct = Math.cos(65*Math.PI/180), st = Math.sin(65*Math.PI/180);
+  for (; i < pN+rN; i++) {
+    const ang = Math.random()*Math.PI*2;
+    const rr  = 1.42 + Math.random()*0.88;
+    const thk = (Math.random()-.5)*0.055;
+    const lx  = rr*Math.cos(ang), lz = rr*Math.sin(ang)+thk;
+    pos[i*3]  = lx;
+    pos[i*3+1]= -lz*st;
+    pos[i*3+2]=  lz*ct;
+    writeCol(col,i*3, baseHue+28,0.65,0.76, 32,14);
+  }
+
+  // VW Crown — 5 peaks
+  const PEAKS=5, crownR=0.52, crownBase=1.06;
+  for (; i < N; i++) {
+    const t   = Math.random()*PEAKS;
+    const sI  = Math.floor(t), sF=t-sI;
+    const ph2 = Math.pow(Math.sin(sF*Math.PI),0.75)*0.5;
+    const ang = (sI+sF)/PEAKS*Math.PI*2;
+    const cr  = crownR+(Math.random()-.5)*0.06;
+    pos[i*3]  = cr*Math.cos(ang)+(Math.random()-.5)*0.04;
+    pos[i*3+1]= crownBase+ph2  +(Math.random()-.5)*0.04;
+    pos[i*3+2]= cr*Math.sin(ang)+(Math.random()-.5)*0.04;
+    writeCol(col,i*3, 44,0.92,0.76, 10,8);
+  }
+  return { pos, col };
+}
+
+function getCount() { return parseInt(document.getElementById('cnt-sl').value); }
+function getSize()  { return parseFloat(document.getElementById('sz-sl').value)*0.014; }
+
+function build() {
+  if (pts) { group.remove(pts); geo.dispose(); mat.dispose(); }
+  const { pos, col } = genSaturn(getCount());
+  origPos = new Float32Array(pos);
+
+  geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+
+  mat = new THREE.PointsMaterial({
+    size: getSize(), map: sprite,
+    vertexColors: true, transparent: true, opacity: 1.0,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
+  });
+
+  pts = new THREE.Points(geo, mat);
+  group.add(pts);
+  vortexAngle=0; waveAmp=0; posDirty=false;
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  GESTURE EFFECTS STATE
+// ═══════════════════════════════════════════════════════
+let curGesture='none', targetScale=1, currentScale=1;
+let autoRotSpd=0.004, targetRotSpd=0.004, autoY=0;
+let vortexAngle=0, waveAmp=0, posDirty=false;
+let speedMult=1;
+
+function applyPositionEffects(T) {
+  const arr=geo.attributes.position.array, n=arr.length;
+  const cv=Math.cos(vortexAngle), sv=Math.sin(vortexAngle);
+  const wA=waveAmp>0.005;
+  for (let i=0;i<n;i+=3) {
+    const ox=origPos[i], oy=origPos[i+1], oz=origPos[i+2];
+    arr[i]  = ox*cv - oz*sv;
+    arr[i+2]= ox*sv + oz*cv;
+    arr[i+1]= oy + (wA ? Math.sin(ox*2.6+oz*1.4+T*5.5)*waveAmp : 0);
+  }
+  geo.attributes.position.needsUpdate=true;
+}
+
+function restorePositions() {
+  geo.attributes.position.array.set(origPos);
+  geo.attributes.position.needsUpdate=true;
+}
+
+// ─── Render loop ───
+let T=0, handLM=null;
+
+function startRenderLoop() {
+  (function loop() {
+    requestAnimationFrame(loop);
+    T += 0.012*speedMult;
+
+    // Scale
+    if (curGesture!=='fist' && curGesture!=='open')
+      targetScale += (1.0 - targetScale)*0.012;
+    currentScale += (targetScale - currentScale)*0.055;
+
+    const pulseMod = curGesture==='thumb'
+      ? 1 + Math.sin(T*9.5)*0.28
+      : 1 + Math.sin(T*1.4)*0.018;
+    group.scale.setScalar(currentScale*pulseMod);
+
+    // Rotation
+    if (curGesture==='point' && handLM) {
+      targetRotSpd = (1-handLM[8].x - 0.5)*0.08;
+    } else {
+      targetRotSpd = 0.004*speedMult;
+    }
+    autoRotSpd += (targetRotSpd-autoRotSpd)*0.06;
+    autoY += autoRotSpd;
+    group.rotation.y = uRotY+autoY;
+    group.rotation.x = uRotX+Math.sin(T*0.22)*0.025;
+
+    // Vortex
+    if (curGesture==='peace') vortexAngle += 0.045*speedMult;
+    else vortexAngle *= 0.965;
+
+    // Wave
+    if (curGesture==='three') waveAmp = Math.min(0.72, waveAmp+0.035);
+    else waveAmp *= 0.94;
+
+    // Position effects
+    const vA=Math.abs(vortexAngle)>0.005, wAc=waveAmp>0.005;
+    if (vA||wAc) { applyPositionEffects(T); posDirty=true; }
+    else if (posDirty) { restorePositions(); posDirty=false; }
+
+    // Scale bar
+    const pct = ((currentScale-0.18)/(2.5-0.18))*100;
+    document.getElementById('sfill').style.width = Math.max(2,Math.min(100,pct))+'%';
+
+    renderer.render(scene,cam3);
+  })();
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  GESTURE DETECTION  —  loaded AFTER particles appear
+// ═══════════════════════════════════════════════════════
+const GESTURE_META = {
+  fist:  {icon:'✊',name:'COLLAPSE', desc:'Black hole implosion',  card:'gc-fist' },
+  open:  {icon:'✋',name:'EXPLODE',  desc:'Particle expansion',    card:'gc-open' },
+  point: {icon:'☝️',name:'STEER',   desc:'Steering rotation',     card:'gc-point'},
+  peace: {icon:'✌️',name:'VORTEX', desc:'Particle vortex',       card:'gc-peace'},
+  three: {icon:'🤟',name:'WAVE',    desc:'Ripple field',          card:'gc-three'},
+  thumb: {icon:'👍',name:'PULSE',   desc:'Heartbeat rhythm',      card:'gc-thumb'},
+  none:  {icon:'·', name:'—',       desc:'Show your hand',        card:null},
+};
+
+let effTimer=null;
+function setGestureUI(g) {
+  const m = GESTURE_META[g]||GESTURE_META.none;
+  document.getElementById('g-icon').textContent = m.icon;
+  document.getElementById('g-name').textContent = m.name;
+  document.getElementById('g-desc').textContent = m.desc;
+  document.querySelectorAll('.gc').forEach(el=>el.classList.remove('lit'));
+  if (m.card) document.getElementById(m.card)?.classList.add('lit');
+  if (g!=='none') {
+    const el=document.getElementById('effect-label');
+    el.textContent=m.name; el.style.opacity='1';
+    if (effTimer) clearTimeout(effTimer);
+    effTimer=setTimeout(()=>{ el.style.opacity='0'; },1800);
+  }
+}
+
+function classify(lm) {
+  if (!lm||lm.length<21) return 'none';
+  const thumbUp =lm[4].y <lm[3].y -0.015;
+  const indexUp =lm[8].y <lm[6].y -0.02;
+  const midUp   =lm[12].y<lm[10].y-0.02;
+  const ringUp  =lm[16].y<lm[14].y-0.02;
+  const pinkyUp =lm[20].y<lm[18].y-0.02;
+  const fCount  =[indexUp,midUp,ringUp,pinkyUp].filter(Boolean).length;
+  if (fCount>=4)                                             return 'open';
+  if (fCount===0&&!thumbUp)                                  return 'fist';
+  if (thumbUp&&fCount===0)                                   return 'thumb';
+  if (indexUp&&!midUp&&!ringUp&&!pinkyUp&&!thumbUp)          return 'point';
+  if (indexUp&&midUp&&!ringUp&&!pinkyUp)                     return 'peace';
+  if (indexUp&&midUp&&ringUp&&!pinkyUp)                      return 'three';
+  return 'none';
+}
+
+let gBuf=[];
+function smooth(raw) {
+  gBuf.push(raw); if(gBuf.length>7) gBuf.shift();
+  const t={}; gBuf.forEach(g=>t[g]=(t[g]||0)+1);
+  return Object.entries(t).sort((a,b)=>b[1]-a[1])[0][0];
+}
+
+async function loadGestureCamera() {
+  const camStatus = document.getElementById('cam-status');
+  camStatus.textContent = 'Loading gesture engine…';
+
+  try {
+    await loadScript(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js',
+      'https://unpkg.com/@mediapipe/hands/hands.js',
+      12000
+    );
+    camStatus.textContent = 'Loading camera utils…';
+    await loadScript(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
+      'https://unpkg.com/@mediapipe/camera_utils/camera_utils.js',
+      8000
+    );
+  } catch(e) {
+    camStatus.textContent = 'Gesture camera unavailable';
+    document.getElementById('g-desc').textContent = 'No camera · Drag to rotate · Scroll to zoom';
+    document.getElementById('camwrap').style.display='none';
+    return;
+  }
+
+  camStatus.textContent = 'Starting camera…';
+
+  const video = document.getElementById('video');
+  const mp = new Hands({
+    locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  mp.setOptions({ maxNumHands:1, modelComplexity:1,
+    minDetectionConfidence:0.70, minTrackingConfidence:0.55 });
+
+  mp.onResults(r => {
+    handLM = r.multiHandLandmarks?.[0] || null;
+    const g = smooth(classify(handLM));
+    if (g!==curGesture) { curGesture=g; setGestureUI(g); }
+    if (g==='fist') targetScale=0.18;
+    else if (g==='open') targetScale=2.5;
+    else if (g==='peace'||g==='three') targetScale=1.0;
+  });
+
+  try {
+    const cam = new Camera(video, {
+      onFrame: async()=>{ await mp.send({image:video}); },
+      width:640, height:480,
+    });
+    await cam.start();
+    camStatus.textContent = 'Gesture camera active ✓';
+    document.getElementById('g-desc').textContent = 'Show your hand to the camera';
+    setTimeout(()=>{ camStatus.style.opacity='0.4'; }, 3000);
+  } catch(e) {
+    camStatus.textContent = 'Camera access denied';
+    document.getElementById('camwrap').style.display='none';
+    document.getElementById('g-desc').textContent = 'Camera denied · Drag to rotate · Scroll to zoom';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  MOUSE / TOUCH / SCROLL
+// ═══════════════════════════════════════════════════════
+let dragging=false, pmx=0, pmy=0, uRotX=0, uRotY=0;
+
+document.addEventListener('mousedown', e=>{
+  if(e.target.id==='canvas'){dragging=true;pmx=e.clientX;pmy=e.clientY;}
+});
+window.addEventListener('mouseup', ()=>dragging=false);
+window.addEventListener('mousemove', e=>{
+  if(!dragging)return;
+  uRotY+=(e.clientX-pmx)*0.007; uRotX+=(e.clientY-pmy)*0.007;
+  pmx=e.clientX; pmy=e.clientY;
+});
+window.addEventListener('touchstart', e=>{pmx=e.touches[0].clientX;pmy=e.touches[0].clientY;},{passive:true});
+window.addEventListener('touchmove', e=>{
+  uRotY+=(e.touches[0].clientX-pmx)*0.007;
+  uRotX+=(e.touches[0].clientY-pmy)*0.007;
+  pmx=e.touches[0].clientX; pmy=e.touches[0].clientY;
+},{passive:true});
+window.addEventListener('wheel', e=>{
+  if(cam3) cam3.position.z=Math.max(2,Math.min(12,cam3.position.z+e.deltaY*0.005));
+},{passive:true});
+
+
+// ═══════════════════════════════════════════════════════
+//  UI EVENTS  (safe to bind early — functions defined above)
+// ═══════════════════════════════════════════════════════
+function initUI() {
+  document.getElementById('hue-sl').addEventListener('input', e=>{
+    baseHue=+e.target.value; build();
+  });
+  document.getElementById('sz-sl').addEventListener('input', e=>{
+    const v=+e.target.value; document.getElementById('sz-v').textContent=v;
+    if(mat) mat.size=v*0.014;
+  });
+  document.getElementById('spd-sl').addEventListener('input', e=>{
+    const v=+e.target.value; document.getElementById('spd-v').textContent=v;
+    speedMult=v/5;
+  });
+  document.getElementById('cnt-sl').addEventListener('input', e=>{
+    const v=+e.target.value;
+    document.getElementById('cnt-v').textContent=v>=1000?Math.round(v/1000)+'k':v;
+    build();
+  });
+  let camVis=true;
+  document.getElementById('cam-tog').addEventListener('click', ()=>{
+    camVis=!camVis;
+    const cw=document.getElementById('camwrap');
+    cw.style.opacity=camVis?'1':'0'; cw.style.pointerEvents=camVis?'auto':'none';
+  });
+  document.getElementById('fsbtn').addEventListener('click', ()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+}
+</script>
+</body>
+</html>
